@@ -19,7 +19,7 @@ test_requires 'Moose';
 
 feature 'JSON (application/json) support',
     -default   => 0,
-    'JSON'     => '2.12';
+    'JSON'     => '2.12',
     'JSON::XS' => '2.2222';
 
 feature 'Data::Taxi (text/x-data-taxi) support',
