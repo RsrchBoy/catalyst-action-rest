@@ -1,18 +1,11 @@
-package Catalyst::Controller::REST;
+package Catalyst::ControllerRole::Serialize;
 
-use Moose;
+use Moose::Role;
 use namespace::autoclean;
-
-extends 'Catalyst::Controller';
-with 'Catalyst::ControllerRole::StatusHelpers';
-with 'Catalyst::ControllerRole::Serialize';
+use MooseX::MethodAttributes::Role;
 
 our $VERSION = '0.85';
 $VERSION = eval $VERSION;
-
-__PACKAGE__->meta->make_immutable;
-
-__END__
 
 =head1 NAME
 
@@ -260,270 +253,43 @@ for more information.
 
 =head1 STATUS HELPERS
 
-Since so much of REST is in using HTTP, we provide these Status Helpers.
-Using them will ensure that you are responding with the proper codes,
-headers, and entities.
-
-These helpers try and conform to the HTTP 1.1 Specification.  You can
-refer to it at: L<http://www.w3.org/Protocols/rfc2616/rfc2616.txt>.
-These routines are all implemented as regular subroutines, and as
-such require you pass the current context ($c) as the first argument.
+Since so much of REST is in using HTTP, we provide a set of status helpers
+over in L<Catalyst::ControllerRole::StatusHelpers>.  Using them will ensure
+that you are responding with the proper codes, headers, and entities.
 
 =over
 
 =cut
 
-use Params::Validate qw(SCALAR OBJECT);
+requires 'config';
+requires 'COMPONENT';
 
-__PACKAGE__->mk_accessors(qw(serialize));
+has serialize => (is => 'rw');
 
-__PACKAGE__->config(
-    'stash_key' => 'rest',
-    'map'       => {
-        'text/html'          => 'YAML::HTML',
-        'text/xml'           => 'XML::Simple',
-        'text/x-yaml'        => 'YAML',
-        'application/json'   => 'JSON',
-        'text/x-json'        => 'JSON',
-        'text/x-data-dumper' => [ 'Data::Serializer', 'Data::Dumper' ],
-        'text/x-data-denter' => [ 'Data::Serializer', 'Data::Denter' ],
-        'text/x-data-taxi'   => [ 'Data::Serializer', 'Data::Taxi'   ],
-        'application/x-storable'   => [ 'Data::Serializer', 'Storable' ],
-        'application/x-freezethaw' => [ 'Data::Serializer', 'FreezeThaw' ],
-        'text/x-config-general'    => [ 'Data::Serializer', 'Config::General' ],
-        'text/x-php-serialization' => [ 'Data::Serializer', 'PHP::Serialization' ],
-    },
-);
+before COMPONENT => sub {
+
+    shift->config(
+        'stash_key' => 'rest',
+        'map'       => {
+            'text/html'          => 'YAML::HTML',
+            'text/xml'           => 'XML::Simple',
+            'text/x-yaml'        => 'YAML',
+            'application/json'   => 'JSON',
+            'text/x-json'        => 'JSON',
+            'text/x-data-dumper' => [ 'Data::Serializer', 'Data::Dumper' ],
+            'text/x-data-denter' => [ 'Data::Serializer', 'Data::Denter' ],
+            'text/x-data-taxi'   => [ 'Data::Serializer', 'Data::Taxi'   ],
+            'application/x-storable'   => [ 'Data::Serializer', 'Storable' ],
+            'application/x-freezethaw' => [ 'Data::Serializer', 'FreezeThaw' ],
+            'text/x-config-general'    => [ 'Data::Serializer', 'Config::General' ],
+            'text/x-php-serialization' => [ 'Data::Serializer', 'PHP::Serialization' ],
+        },
+    );
+};
 
 sub begin : ActionClass('Deserialize') { }
 
 sub end : ActionClass('Serialize') { }
-
-=item status_ok
-
-Returns a "200 OK" response.  Takes an "entity" to serialize.
-
-Example:
-
-  $self->status_ok(
-    $c,
-    entity => {
-        radiohead => "Is a good band!",
-    }
-  );
-
-=cut
-
-sub status_ok {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate( @_, { entity => 1, }, );
-
-    $c->response->status(200);
-    $self->_set_entity( $c, $p{'entity'} );
-    return 1;
-}
-
-=item status_created
-
-Returns a "201 CREATED" response.  Takes an "entity" to serialize,
-and a "location" where the created object can be found.
-
-Example:
-
-  $self->status_created(
-    $c,
-    location => $c->req->uri->as_string,
-    entity => {
-        radiohead => "Is a good band!",
-    }
-  );
-
-In the above example, we use the requested URI as our location.
-This is probably what you want for most PUT requests.
-
-=cut
-
-sub status_created {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate(
-        @_,
-        {
-            location => { type     => SCALAR | OBJECT },
-            entity   => { optional => 1 },
-        },
-    );
-
-    my $location;
-    if ( ref( $p{'location'} ) ) {
-        $location = $p{'location'}->as_string;
-    } else {
-        $location = $p{'location'};
-    }
-    $c->response->status(201);
-    $c->response->header( 'Location' => $location );
-    $self->_set_entity( $c, $p{'entity'} );
-    return 1;
-}
-
-=item status_accepted
-
-Returns a "202 ACCEPTED" response.  Takes an "entity" to serialize.
-
-Example:
-
-  $self->status_accepted(
-    $c,
-    entity => {
-        status => "queued",
-    }
-  );
-
-=cut
-
-sub status_accepted {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate( @_, { entity => 1, }, );
-
-    $c->response->status(202);
-    $self->_set_entity( $c, $p{'entity'} );
-    return 1;
-}
-
-=item status_no_content
-
-Returns a "204 NO CONTENT" response.
-
-=cut
-
-sub status_no_content {
-    my $self = shift;
-    my $c    = shift;
-    $c->response->status(204);
-    $self->_set_entity( $c, undef );
-    return 1.;
-}
-
-=item status_multiple_choices
-
-Returns a "300 MULTIPLE CHOICES" response. Takes an "entity" to serialize, which should
-provide list of possible locations. Also takes optional "location" for preferred choice.
-
-=cut
-
-sub status_multiple_choices {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate(
-        @_,
-        {
-            entity => 1,
-            location => { type     => SCALAR | OBJECT, optional => 1 },
-        },
-    );
-
-    my $location;
-    if ( ref( $p{'location'} ) ) {
-        $location = $p{'location'}->as_string;
-    } else {
-        $location = $p{'location'};
-    }
-    $c->response->status(300);
-    $c->response->header( 'Location' => $location ) if exists $p{'location'};
-    $self->_set_entity( $c, $p{'entity'} );
-    return 1;
-}
-
-=item status_bad_request
-
-Returns a "400 BAD REQUEST" response.  Takes a "message" argument
-as a scalar, which will become the value of "error" in the serialized
-response.
-
-Example:
-
-  $self->status_bad_request(
-    $c,
-    message => "Cannot do what you have asked!",
-  );
-
-=cut
-
-sub status_bad_request {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate( @_, { message => { type => SCALAR }, }, );
-
-    $c->response->status(400);
-    $c->log->debug( "Status Bad Request: " . $p{'message'} ) if $c->debug;
-    $self->_set_entity( $c, { error => $p{'message'} } );
-    return 1;
-}
-
-=item status_not_found
-
-Returns a "404 NOT FOUND" response.  Takes a "message" argument
-as a scalar, which will become the value of "error" in the serialized
-response.
-
-Example:
-
-  $self->status_not_found(
-    $c,
-    message => "Cannot find what you were looking for!",
-  );
-
-=cut
-
-sub status_not_found {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate( @_, { message => { type => SCALAR }, }, );
-
-    $c->response->status(404);
-    $c->log->debug( "Status Not Found: " . $p{'message'} ) if $c->debug;
-    $self->_set_entity( $c, { error => $p{'message'} } );
-    return 1;
-}
-
-=item gone
-
-Returns a "41O GONE" response.  Takes a "message" argument as a scalar,
-which will become the value of "error" in the serialized response.
-
-Example:
-
-  $self->status_gone(
-    $c,
-    message => "The document have been deleted by foo",
-  );
-
-=cut
-
-sub status_gone {
-    my $self = shift;
-    my $c    = shift;
-    my %p    = Params::Validate::validate( @_, { message => { type => SCALAR }, }, );
-
-    $c->response->status(410);
-    $c->log->debug( "Status Gone " . $p{'message'} ) if $c->debug;
-    $self->_set_entity( $c, { error => $p{'message'} } );
-    return 1;
-}
-
-sub _set_entity {
-    my $self   = shift;
-    my $c      = shift;
-    my $entity = shift;
-    if ( defined($entity) ) {
-        $c->stash->{ $self->{'stash_key'} } = $entity;
-    }
-    return 1;
-}
-
-=back
 
 =head1 MANUAL RESPONSES
 
