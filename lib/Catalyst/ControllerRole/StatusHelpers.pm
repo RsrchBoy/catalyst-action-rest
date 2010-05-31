@@ -107,9 +107,11 @@ requires 'config';
 requires 'COMPONENT';
 
 before COMPONENT => sub {
+    my $class = shift @_;
 
-    # set our default
-    shift->config('stash_key' => 'rest');
+    $class->config(
+        $class->merge_config_hashes({ 'stash_key' => 'rest' }, $class->config)
+    );
     return;
 };
 

@@ -267,8 +267,9 @@ requires 'COMPONENT';
 has serialize => (is => 'rw');
 
 before COMPONENT => sub {
+    my $class = shift @_;
 
-    shift->config(
+    my $config = {
         'stash_key' => 'rest',
         'map'       => {
             'text/html'          => 'YAML::HTML',
@@ -284,7 +285,13 @@ before COMPONENT => sub {
             'text/x-config-general'    => [ 'Data::Serializer', 'Config::General' ],
             'text/x-php-serialization' => [ 'Data::Serializer', 'PHP::Serialization' ],
         },
+    };
+
+
+    $class->config(
+        $class->merge_config_hashes($config, $class->config)
     );
+    return;
 };
 
 sub begin : ActionClass('Deserialize') { }
