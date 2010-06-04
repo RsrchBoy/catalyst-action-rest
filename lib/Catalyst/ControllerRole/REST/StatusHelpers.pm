@@ -1,4 +1,4 @@
-package Catalyst::ControllerRole::StatusHelpers;
+package Catalyst::ControllerRole::REST::StatusHelpers;
 
 use Moose::Role;
 use namespace::autoclean;

@@ -4,8 +4,8 @@ use Moose;
 use namespace::autoclean;
 
 extends 'Catalyst::Controller';
-with 'Catalyst::ControllerRole::StatusHelpers';
-with 'Catalyst::ControllerRole::Serialize';
+with 'Catalyst::ControllerRole::REST::StatusHelpers';
+with 'Catalyst::ControllerRole::REST::Serialize';
 
 our $VERSION = '0.85';
 $VERSION = eval $VERSION;

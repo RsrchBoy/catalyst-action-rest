@@ -1,4 +1,4 @@
-package Catalyst::ControllerRole::Serialize;
+package Catalyst::ControllerRole::REST::Serialize;
 
 use Moose::Role;
 use namespace::autoclean;
